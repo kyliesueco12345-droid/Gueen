@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>For you</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fraunces:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1a0f1f;--ink:#ffe3d8;--rose:#ff6b8b;--gold:#f6c177;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(ellipse at 50% 120%,#4a1d3d,var(--bg) 65%);color:var(--ink);font-family:Fraunces,Georgia,serif;overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center}
+canvas{position:fixed;inset:0;pointer-events:none}
+main{position:relative;z-index:1;width:min(92vw,460px);padding:24px}
+.hide{display:none!important}
+h1{font-family:Caveat,cursive;font-weight:700;font-size:3.4rem;margin:0 0 .4rem;color:var(--rose)}
+p{line-height:1.7;font-size:1.1rem;margin:.6rem 0}
+button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:.85rem 1.8rem;font-size:1.1rem;transition:transform .2s}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.yes{background:var(--rose);color:#2a0b17;font-weight:700}
+.no{background:transparent;color:var(--ink);border:1px solid #ffe3d855}
+#open{background:none;font-size:5rem;padding:0;animation:beat 1.4s infinite}
+@keyframes beat{50%{transform:scale(1.15)}}
+#letter{min-height:9em;text-align:left;font-size:1.15rem;line-height:1.8;white-space:pre-wrap}
+.row{display:flex;gap:1rem;justify-content:center;align-items:center;margin-top:1.6rem;min-height:70px}
+.sig{font-family:Caveat,cursive;font-size:1.8rem;color:var(--gold)}
+@media (prefers-reduced-motion:reduce){#open{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<main>
+  <section id="s0">
+    <button id="open" aria-label="Open your letter">💌</button>
+    <p>Tap to open. This one is for you.</p>
+  </section>
+
+  <section id="s1" class="hide">
+    <h1 id="to">My love,</h1>
+    <div id="letter" aria-live="polite"></div>
+    <div class="row hide" id="ask">
+      <button class="yes" id="yes">love mko?</button>
+      <button class="no" id="no">No</button>
+    </div>
+  </section>
+
+  <section id="s2" class="hide">
+    <h1>I knew it 💖</h1>
+    <p>Thankyou baby ko i love you mwaaaaaaaaa!</p>
+    <p class="sig" id="from">— yours</p>
+  </section>
+</main>
+
+<script>
+// ✏️ EDIT THESE — or share the link as ?to=Ally&from=Prince
+const q = new URLSearchParams(location.search);
+const NAME = q.get('to') || 'Baby';
+const FROM = q.get('from') || 'Your baby';
+const MESSAGE =
+`Hi ${NAME},
+
+Sorry if napalain ko buot mo subong pero ready ko ya mag make time simo bskan sa diin pa ko.
+
+Kabalo kagd kung ano taka ka palangga, kag nd mag overthink by kay ikaw lng gd ya gina palangga ko wla na sng iban`;
+
+const $ = id => document.getElementById(id);
+$('to').textContent = NAME + ',';
+$('from').textContent = '— ' + FROM;
+
+// floating hearts
+const cv = $('c'), cx = cv.getContext('2d');
+let W, H, hearts = [];
+function size(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
+addEventListener('resize', size); size();
+function spawn(x, y, burst){
+  hearts.push({x: x ?? Math.random()*W, y: y ?? H+20,
+    s: 8+Math.random()*(burst?16:12),
+    vx: burst ? (Math.random()-.5)*6 : (Math.random()-.5)*.6,
+    vy: burst ? -2-Math.random()*5 : -.6-Math.random()*1.2,
+    a: 1, c: Math.random()<.5 ? '#ff6b8b' : '#f6c177'});
+}
+function heart(h){
+  cx.save(); cx.globalAlpha = h.a; cx.fillStyle = h.c; cx.translate(h.x, h.y);
+  cx.scale(h.s/10, h.s/10); cx.beginPath();
+  cx.moveTo(0,3); cx.bezierCurveTo(0,-3,-10,-3,-10,3);
+  cx.bezierCurveTo(-10,9,0,12,0,18); cx.bezierCurveTo(0,12,10,9,10,3);
+  cx.bezierCurveTo(10,-3,0,-3,0,3); cx.fill(); cx.restore();
+}
+const calm = matchMedia('(prefers-reduced-motion:reduce)').matches;
+function loop(){
+  cx.clearRect(0,0,W,H);
+  if(!calm && Math.random()<.08) spawn();
+  hearts = hearts.filter(h => h.a > 0 && h.y > -30);
+  hearts.forEach(h => { h.x += h.vx; h.y += h.vy; if(h.vy<-1) h.vy += .02; if(h.y<H*.2) h.a -= .01; heart(h); });
+  requestAnimationFrame(loop);
+}
+loop();
+
+// open letter and type it out
+$('open').onclick = () => {
+  $('s0').classList.add('hide'); $('s1').classList.remove('hide');
+  let i = 0;
+  (function type(){
+    $('letter').textContent = MESSAGE.slice(0, ++i);
+    if(i < MESSAGE.length) setTimeout(type, calm ? 0 : 35);
+    else $('ask').classList.remove('hide');
+  })();
+};
+
+// the "No" button dodges; "Yes" grows
+let tries = 0;
+function dodge(e){
+  e.preventDefault(); tries++;
+  const b = $('no'); b.style.position = 'fixed';
+  b.style.left = Math.random()*(W-100) + 'px';
+  b.style.top = Math.random()*(H-60) + 'px';
+  $('yes').style.transform = 'scale(' + Math.min(1 + tries*.15, 2) + ')';
+}
+$('no').addEventListener('pointerenter', dodge);
+$('no').addEventListener('click', dodge);
+
+$('yes').onclick = () => {
+  $('s1').classList.add('hide'); $('s2').classList.remove('hide');
+  for(let i=0;i<90;i++) spawn(W/2, H/2, true);
+  setInterval(() => { for(let i=0;i<6;i++) spawn(Math.random()*W, H, false); }, 600);
+};
+</script>
+</body>
+</html>
